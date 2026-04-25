@@ -82,7 +82,7 @@ export interface DalleRequestPayload {
 }
 
 export class ChatGPTApi implements LLMApi {
-  private disableListModels = true;
+  private disableListModels = false;
 
   path(path: string): string {
     const accessStore = useAccessStore.getState();
@@ -530,16 +530,16 @@ export class ChatGPTApi implements LLMApi {
     });
 
     const resJson = (await res.json()) as OpenAIListModelResponse;
-    const chatModels = resJson.data?.filter(
-      (m) => m.id.startsWith("gpt-") || m.id.startsWith("chatgpt-"),
-    );
+    // Accept every model the upstream (e.g. newapi) reports — no prefix
+    // filtering — so new channels/models become usable without any client
+    // code or env changes.
+    const chatModels = resJson.data;
     console.log("[Models]", chatModels);
 
     if (!chatModels) {
       return [];
     }
 
-    //由于目前 OpenAI 的 disableListModels 默认为 true，所以当前实际不会运行到这场
     let seq = 1000; //同 Constant.ts 中的排序保持一致
     return chatModels.map((m) => ({
       name: m.id,

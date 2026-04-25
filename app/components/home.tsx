@@ -226,10 +226,34 @@ export function useLoadData() {
   const api: ClientApi = getClientApi(config.modelConfig.providerName);
 
   useEffect(() => {
-    (async () => {
-      const models = await api.llm.models();
-      config.mergeModels(models);
-    })();
+    let cancelled = false;
+    const loadOnce = async () => {
+      // Best-effort fetch with one retry to absorb transient socket errors
+      // (e.g. undici reusing a half-closed keep-alive connection on the
+      // first request after dev-server boot).
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const models = await api.llm.models();
+          if (cancelled) return;
+          if (models && models.length > 0) {
+            config.mergeModels(models);
+          }
+          return;
+        } catch (err) {
+          console.warn(
+            `[useLoadData] models() failed (attempt ${attempt + 1}/2)`,
+            err,
+          );
+          if (attempt === 0) {
+            await new Promise((r) => setTimeout(r, 500));
+          }
+        }
+      }
+    };
+    loadOnce();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }

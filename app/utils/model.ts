@@ -240,6 +240,14 @@ export function isModelNotavailableInServer(
     return true;
   }
 
+  // Fully-auto mode: when CUSTOM_MODELS is unset we trust the upstream
+  // (e.g. newapi) to enforce its own model whitelist. The hardcoded
+  // DEFAULT_MODELS table no longer reflects what the proxy actually serves,
+  // so falling back to it would block every model that's not in DEFAULT_MODELS.
+  if (!customModels || customModels.trim().length === 0) {
+    return false;
+  }
+
   const modelTable = collectModelTable(DEFAULT_MODELS, customModels);
 
   const providerNamesArray = Array.isArray(providerNames)

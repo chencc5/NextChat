@@ -200,15 +200,12 @@ export const useAppConfig = createPersistStore(
     merge(persistedState, currentState) {
       const state = persistedState as ChatConfig | undefined;
       if (!state) return { ...currentState };
-      const models = currentState.models.slice();
-      state.models.forEach((pModel) => {
-        const idx = models.findIndex(
-          (v) => v.name === pModel.name && v.provider === pModel.provider,
-        );
-        if (idx !== -1) models[idx] = pModel;
-        else models.push(pModel);
-      });
-      return { ...currentState, ...state, models: models };
+      // Always start from the in-memory DEFAULT_MODELS list and let
+      // useLoadData() refresh it from /v1/models. The previous merge logic
+      // resurrected stale persisted models with available=true and corrupted
+      // the dynamic model list. We deliberately drop persisted `models` here.
+      const { models: _ignoredPersistedModels, ...rest } = state as any;
+      return { ...currentState, ...rest };
     },
 
     migrate(persistedState, version) {

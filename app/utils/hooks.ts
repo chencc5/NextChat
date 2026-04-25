@@ -6,9 +6,12 @@ export function useAllModels() {
   const accessStore = useAccessStore();
   const configStore = useAppConfig();
   const models = useMemo(() => {
+    // Fully-auto model discovery: ignore CUSTOM_MODELS so that whatever the
+    // upstream /v1/models returns (merged into configStore.models) is shown
+    // verbatim. DEFAULT_MODEL is still honored via accessStore.defaultModel.
     return collectModelsWithDefaultModel(
       configStore.models,
-      [configStore.customModels, accessStore.customModels].join(","),
+      "",
       accessStore.defaultModel,
     );
   }, [

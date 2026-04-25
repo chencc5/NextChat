@@ -116,7 +116,11 @@ import { prettyObject } from "../utils/format";
 import { ExportMessageModal } from "./exporter";
 import { getClientConfig } from "../config/client";
 import { useAllModels } from "../utils/hooks";
-import { ClientApi, MultimodalContent } from "../client/api";
+import {
+  ClientApi,
+  MultimodalContent,
+  getClientApi,
+} from "../client/api";
 import { createTTSPlayer } from "../utils/audio";
 import { MsEdgeTTS, OUTPUT_FORMAT } from "../utils/ms_edge_tts";
 
@@ -677,6 +681,27 @@ export function ChatActions(props: {
           onClick={() => setShowModelSelector(true)}
           text={currentModelName}
           icon={<RobotIcon />}
+        />
+
+        <ChatAction
+          text={Locale.Chat.InputActions.RefreshModels ?? "刷新模型"}
+          icon={<ResetIcon />}
+          onClick={async () => {
+            showToast("正在拉取模型列表...");
+            try {
+              const refreshApi = getClientApi(currentProviderName);
+              const fetched = await refreshApi.llm.models();
+              if (fetched && fetched.length > 0) {
+                config.mergeModels(fetched);
+                showToast(`已刷新，共 ${fetched.length} 个模型`);
+              } else {
+                showToast("未拿到任何模型，请检查 API key / BASE_URL");
+              }
+            } catch (e) {
+              console.error("[RefreshModels] failed", e);
+              showToast("刷新失败：" + (e as Error).message);
+            }
+          }}
         />
 
         {showModelSelector && (
