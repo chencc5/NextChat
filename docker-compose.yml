@@ -1,38 +1,28 @@
 version: "3.9"
-services:
-  chatgpt-next-web:
-    profiles: [ "no-proxy" ]
-    container_name: chatgpt-next-web
-    image: yidadaa/chatgpt-next-web
-    ports:
-      - 3000:3000
-    environment:
-      - OPENAI_API_KEY=$OPENAI_API_KEY
-      - GOOGLE_API_KEY=$GOOGLE_API_KEY
-      - CODE=$CODE
-      - BASE_URL=$BASE_URL
-      - OPENAI_ORG_ID=$OPENAI_ORG_ID
-      - HIDE_USER_API_KEY=$HIDE_USER_API_KEY
-      - DISABLE_GPT4=$DISABLE_GPT4
-      - ENABLE_BALANCE_QUERY=$ENABLE_BALANCE_QUERY
-      - DISABLE_FAST_LINK=$DISABLE_FAST_LINK
-      - OPENAI_SB=$OPENAI_SB
 
-  chatgpt-next-web-proxy:
-    profiles: [ "proxy" ]
-    container_name: chatgpt-next-web-proxy
-    image: yidadaa/chatgpt-next-web
+# Single-service compose for the ellchan fork.
+# All values come from the .env file in the same directory (or shell env).
+
+services:
+  nextchat:
+    container_name: nextchat
+    image: ellchan/nextchat:latest
+    restart: unless-stopped
     ports:
-      - 3000:3000
+      - "3000:3000"
     environment:
-      - OPENAI_API_KEY=$OPENAI_API_KEY
-      - GOOGLE_API_KEY=$GOOGLE_API_KEY
-      - CODE=$CODE
-      - PROXY_URL=$PROXY_URL
-      - BASE_URL=$BASE_URL
-      - OPENAI_ORG_ID=$OPENAI_ORG_ID
-      - HIDE_USER_API_KEY=$HIDE_USER_API_KEY
-      - DISABLE_GPT4=$DISABLE_GPT4
-      - ENABLE_BALANCE_QUERY=$ENABLE_BALANCE_QUERY
-      - DISABLE_FAST_LINK=$DISABLE_FAST_LINK
-      - OPENAI_SB=$OPENAI_SB
+      # --- core ---
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - BASE_URL=${BASE_URL}
+      - CODE=${CODE}
+      - DEFAULT_MODEL=${DEFAULT_MODEL:-}
+      # --- optional ---
+      - PROXY_URL=${PROXY_URL:-}
+      - OPENAI_ORG_ID=${OPENAI_ORG_ID:-}
+      - HIDE_USER_API_KEY=${HIDE_USER_API_KEY:-1}
+      - DISABLE_GPT4=${DISABLE_GPT4:-}
+      - ENABLE_BALANCE_QUERY=${ENABLE_BALANCE_QUERY:-}
+      - DISABLE_FAST_LINK=${DISABLE_FAST_LINK:-}
+      - CUSTOM_MODELS=${CUSTOM_MODELS:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - ENABLE_MCP=${ENABLE_MCP:-}
