@@ -691,7 +691,7 @@ const ko: PartialLocaleType = {
       SubTitle: (count: number) => `${count} 개의 플러그인`,
       Search: "플러그인 검색",
       Create: "새로 만들기",
-      Find: "github에서 멋진 플러그인을 찾을 수 있습니다: ",
+      Find: "사용 가능한 플러그인이 없습니다. 오른쪽 상단 버튼을 눌러 생성하세요.",
     },
     Item: {
       Info: (count: number) => `${count} 개의 메서드`,

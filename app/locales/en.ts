@@ -1,22 +1,10 @@
-import { getClientConfig } from "../config/client";
 import { SubmitKey } from "../store/config";
 import { LocaleType } from "./index";
-import { SAAS_CHAT_UTM_URL } from "@/app/constant";
-// if you are adding a new translation, please use PartialLocaleType instead of LocaleType
 
-const isApp = !!getClientConfig()?.isApp;
 const en: LocaleType = {
   WIP: "Coming Soon...",
   Error: {
-    Unauthorized: isApp
-      ? `😆 Oops, there's an issue. No worries:
-     \\ 1️⃣ New here? [Click to start chatting now 🚀](${SAAS_CHAT_UTM_URL})
-     \\ 2️⃣ Want to use your own OpenAI resources? [Click here](/#/settings) to change settings ⚙️`
-      : `😆 Oops, there's an issue. Let's fix it:
-     \ 1️⃣ New here? [Click to start chatting now 🚀](${SAAS_CHAT_UTM_URL})
-     \ 2️⃣ Using a private setup? [Click here](/#/auth) to enter your key 🔑
-     \ 3️⃣ Want to use your own OpenAI resources? [Click here](/#/settings) to change settings ⚙️
-     `,
+    Unauthorized: `Your session has expired or the access code is invalid. Please [click here](/#/auth) to re-enter your access code.`,
   },
   Auth: {
     Return: "Return",
@@ -26,9 +14,8 @@ const en: LocaleType = {
     Input: "access code",
     Confirm: "Confirm",
     Later: "Later",
-    SaasTips: "Too Complex, Use Immediately Now",
-    TopTips:
-      "🥳 NextChat AI launch promotion: Instantly unlock the latest models like OpenAI o1, GPT-4o, Claude-3.5!",
+    SaasTips: "",
+    TopTips: "",
   },
   ChatItem: {
     ChatItemCount: (count: number) => `${count} messages`,
@@ -697,7 +684,7 @@ const en: LocaleType = {
       SubTitle: (count: number) => `${count} plugins`,
       Search: "Search Plugin",
       Create: "Create",
-      Find: "You can find awesome plugins on github: ",
+      Find: "No plugins yet. Click the top-right button to create one.",
     },
     Item: {
       Info: (count: number) => `${count} method`,

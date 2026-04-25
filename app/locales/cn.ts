@@ -1,21 +1,9 @@
-import { getClientConfig } from "../config/client";
 import { SubmitKey } from "../store/config";
-import { SAAS_CHAT_UTM_URL } from "@/app/constant";
-
-const isApp = !!getClientConfig()?.isApp;
 
 const cn = {
   WIP: "该功能仍在开发中……",
   Error: {
-    Unauthorized: isApp
-      ? `😆 对话遇到了一些问题，不用慌:
-       \\ 1️⃣ 想要零配置开箱即用，[点击这里立刻开启对话 🚀](${SAAS_CHAT_UTM_URL})
-       \\ 2️⃣ 如果你想消耗自己的 OpenAI 资源，点击[这里](/#/settings)修改设置 ⚙️`
-      : `😆 对话遇到了一些问题，不用慌:
-       \ 1️⃣ 想要零配置开箱即用，[点击这里立刻开启对话 🚀](${SAAS_CHAT_UTM_URL})
-       \ 2️⃣ 如果你正在使用私有部署版本，点击[这里](/#/auth)输入访问秘钥 🔑
-       \ 3️⃣ 如果你想消耗自己的 OpenAI 资源，点击[这里](/#/settings)修改设置 ⚙️
-       `,
+    Unauthorized: `登录态已失效或访问密码错误，请[点击这里](/#/auth)重新输入访问密码。`,
   },
   Auth: {
     Return: "返回",
@@ -25,9 +13,8 @@ const cn = {
     Input: "在此处填写访问码",
     Confirm: "确认",
     Later: "稍后再说",
-    SaasTips: "配置太麻烦，想要立即使用",
-    TopTips:
-      "🥳 NextChat AI 首发优惠，立刻解锁 OpenAI o1, GPT-4o, Claude-3.5 等最新大模型",
+    SaasTips: "",
+    TopTips: "",
   },
   ChatItem: {
     ChatItemCount: (count: number) => `${count} 条对话`,
@@ -688,7 +675,7 @@ const cn = {
       SubTitle: (count: number) => `${count} 个插件`,
       Search: "搜索插件",
       Create: "新建",
-      Find: "您可以在Github上找到优秀的插件：",
+      Find: "暂无可用插件，请点击右上角创建。",
     },
     Item: {
       Info: (count: number) => `${count} 方法`,

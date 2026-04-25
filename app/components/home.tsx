@@ -21,6 +21,7 @@ import {
   Route,
   Routes,
   useLocation,
+  useNavigate,
 } from "react-router-dom";
 import { SideBar } from "./sidebar";
 import { useAppConfig } from "../store/config";
@@ -160,6 +161,8 @@ export function WindowContent(props: { children: React.ReactNode }) {
 function Screen() {
   const config = useAppConfig();
   const location = useLocation();
+  const navigate = useNavigate();
+  const accessStore = useAccessStore();
   const isArtifact = location.pathname.includes(Path.Artifacts);
   const isHome = location.pathname === Path.Home;
   const isAuth = location.pathname === Path.Auth;
@@ -173,6 +176,30 @@ function Screen() {
   useEffect(() => {
     loadAsyncGoogleFont();
   }, []);
+
+  // Auth gate: when the server requires an access code and the user has not
+  // entered one yet, force them to the /#/auth page before they can reach the
+  // chat UI. We sync with /api/config first so needCode reflects the server.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        await accessStore.fetch();
+      } catch {}
+      if (cancelled) return;
+      const state = useAccessStore.getState();
+      const needsCode =
+        state.needCode &&
+        (!state.accessCode || state.accessCode.trim().length === 0);
+      if (needsCode && location.pathname !== Path.Auth && !isArtifact) {
+        navigate(Path.Auth, { replace: true });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
 
   if (isArtifact) {
     return (
