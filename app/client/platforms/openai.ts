@@ -39,7 +39,9 @@ import Locale from "../../locales";
 import { getClientConfig } from "@/app/config/client";
 import {
   getMessageTextContent,
+  getMessageImages,
   isVisionModel,
+  supportsImageInput,
   isDalle3 as _isDalle3,
   isImageGenerationModel as _isImageGenerationModel,
   getModelSizes,
@@ -204,10 +206,18 @@ export class ChatGPTApi implements LLMApi {
       options.config.model.startsWith("o3") ||
       options.config.model.startsWith("o4-mini");
     const isGpt5 =  options.config.model.startsWith("gpt-5");
+    let imageEditFormData: FormData | null = null;
     if (isImageGen) {
-      const prompt = getMessageTextContent(
-        options.messages.slice(-1)?.pop() as any,
-      );
+      const lastMessage = options.messages.slice(-1)?.pop();
+      const prompt = getMessageTextContent(lastMessage as any);
+      const attachedImageUrls = lastMessage
+        ? getMessageImages(lastMessage as any)
+        : [];
+      const wantsImageEdit =
+        !isDalle3 &&
+        supportsImageInput(options.config.model) &&
+        attachedImageUrls.length > 0;
+
       if (isDalle3) {
         requestPayload = {
           model: options.config.model,
@@ -219,6 +229,64 @@ export class ChatGPTApi implements LLMApi {
           quality: options.config?.quality ?? "standard",
           style: options.config?.style ?? "vivid",
         };
+      } else if (wantsImageEdit) {
+        // Image-to-image / edit via OpenAI-compatible multipart endpoint
+        // (`/v1/images/edits`). Used for gpt-image-* and grok-imagine-image-edit
+        // through their respective upstreams. Browser will set the
+        // multipart/form-data Content-Type with boundary automatically when
+        // body is a FormData and we omit Content-Type from headers.
+        const formData = new FormData();
+        formData.append("model", options.config.model);
+        formData.append("prompt", prompt);
+        formData.append("n", "1");
+        const allowedSizes = getModelSizes(options.config.model);
+        const chosenSize = options.config?.size;
+        if (chosenSize && allowedSizes.includes(chosenSize)) {
+          formData.append("size", chosenSize);
+        }
+        formData.append("response_format", "b64_json");
+        console.log(
+          "[ImageEdit] attaching",
+          attachedImageUrls.length,
+          "image(s):",
+          attachedImageUrls,
+        );
+        let attachedCount = 0;
+        for (let i = 0; i < attachedImageUrls.length; i++) {
+          const url = attachedImageUrls[i];
+          try {
+            // Use the global fetch (not the streaming wrapper) so data:
+            // URLs and same-origin cached URLs both resolve to a Blob.
+            const blob = await (await window.fetch(url)).blob();
+            const type = blob.type || "image/png";
+            const ext = (type.split("/")[1] || "png").split(";")[0];
+            const filename = `image_${i}.${ext}`;
+            formData.append("image[]", blob, filename);
+            console.log(
+              `[ImageEdit] appended image[${i}] ${filename} (${type}, ${blob.size} bytes)`,
+            );
+            attachedCount += 1;
+          } catch (err) {
+            console.error(
+              "[ImageEdit] failed to read attached image:",
+              url,
+              err,
+            );
+          }
+        }
+        if (attachedCount === 0) {
+          throw new Error(
+            "Image edit request was made but no attached images could be read. " +
+              "Check the console above for fetch errors.",
+          );
+        }
+        imageEditFormData = formData;
+        // Placeholder requestPayload to satisfy types; not actually sent.
+        requestPayload = {
+          model: options.config.model,
+          prompt,
+          n: 1,
+        } as DalleRequestPayload;
       } else {
         // Minimal OpenAI-compatible image generation payload for gpt-image-* /
         // grok-imagine-image* via newapi. Avoid response_format/quality/style
@@ -315,15 +383,21 @@ export class ChatGPTApi implements LLMApi {
             model.name === modelConfig.model &&
             model?.provider?.providerName === ServiceProvider.Azure,
         );
+        const azureImagePath = imageEditFormData
+          ? Azure.ImageEditPath
+          : Azure.ImagePath;
         chatPath = this.path(
-          (isImageGen ? Azure.ImagePath : Azure.ChatPath)(
+          (isImageGen ? azureImagePath : Azure.ChatPath)(
             (model?.displayName ?? model?.name) as string,
             useCustomConfig ? useAccessStore.getState().azureApiVersion : "",
           ),
         );
       } else {
+        const openaiImagePath = imageEditFormData
+          ? OpenaiPath.ImageEditPath
+          : OpenaiPath.ImagePath;
         chatPath = this.path(
-          isImageGen ? OpenaiPath.ImagePath : OpenaiPath.ChatPath,
+          isImageGen ? openaiImagePath : OpenaiPath.ChatPath,
         );
       }
       if (shouldStream) {
@@ -426,12 +500,21 @@ export class ChatGPTApi implements LLMApi {
           options,
         );
       } else {
-        const chatPayload = {
-          method: "POST",
-          body: JSON.stringify(requestPayload),
-          signal: controller.signal,
-          headers: getHeaders(),
-        };
+        const chatPayload = imageEditFormData
+          ? {
+              method: "POST",
+              body: imageEditFormData,
+              signal: controller.signal,
+              // ignoreHeaders=true so we omit Content-Type and let the browser
+              // set multipart/form-data with the correct boundary automatically.
+              headers: getHeaders(true),
+            }
+          : {
+              method: "POST",
+              body: JSON.stringify(requestPayload),
+              signal: controller.signal,
+              headers: getHeaders(),
+            };
 
         // make a fetch request
         const requestTimeoutId = setTimeout(

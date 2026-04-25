@@ -69,6 +69,7 @@ import {
   getMessageTextContent,
   isDalle3,
   isVisionModel,
+  supportsImageInput,
   safeLocalStorage,
   getModelSizes,
   supportsCustomSize,
@@ -574,7 +575,8 @@ export function ChatActions(props: {
   const isMobileScreen = useMobileScreen();
 
   useEffect(() => {
-    const show = isVisionModel(currentModel);
+    const show =
+      isVisionModel(currentModel) || supportsImageInput(currentModel);
     setShowUploadImage(show);
     if (!show) {
       props.setAttachImages([]);
@@ -1537,7 +1539,10 @@ function _Chat() {
   const handlePaste = useCallback(
     async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
       const currentModel = chatStore.currentSession().mask.modelConfig.model;
-      if (!isVisionModel(currentModel)) {
+      if (
+        !isVisionModel(currentModel) &&
+        !supportsImageInput(currentModel)
+      ) {
         return;
       }
       const items = (event.clipboardData || window.clipboardData).items;

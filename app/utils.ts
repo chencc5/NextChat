@@ -306,6 +306,22 @@ export function isImageGenerationModel(model: string) {
   return IMAGE_GENERATION_MODEL_REGEXES.some((r) => r.test(model));
 }
 
+// Image-generation models that additionally accept reference images
+// (image-to-image / edit). Only models with a real edit endpoint should be
+// listed here:
+//   - gpt-image-* via OpenAI /v1/images/edits (or compatible upstream)
+//   - grok-imagine-image-edit via grok2api /v1/images/edits (multipart)
+// DALL·E 3 and the other grok-imagine-image-* variants are text-to-image only,
+// so we keep the upload UI hidden for them.
+const IMAGE_INPUT_CAPABLE_REGEXES = [
+  /^gpt-image/i,
+  /imagine-image-edit/i,
+];
+
+export function supportsImageInput(model: string) {
+  return IMAGE_INPUT_CAPABLE_REGEXES.some((r) => r.test(model));
+}
+
 export function getTimeoutMSByModel(model: string) {
   const lowered = model.toLowerCase();
   if (
@@ -328,8 +344,12 @@ export function getModelSizes(model: string): ModelSize[] {
     // OpenAI gpt-image-1/2 only supports these three sizes (plus "auto").
     return ["1024x1024", "1536x1024", "1024x1536"];
   }
+  if (/imagine-image-edit/i.test(model)) {
+    // grok2api's /v1/images/edits currently only accepts 1024x1024.
+    return ["1024x1024"];
+  }
   if (/imagine-image/i.test(model)) {
-    // xAI grok imagine image series; covers square + the two common
+    // xAI grok imagine image generation series; covers square + the two common
     // landscape/portrait pixel pairs newapi/grok2api accepts.
     return [
       "1024x1024",

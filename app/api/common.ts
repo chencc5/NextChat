@@ -90,9 +90,17 @@ export async function requestOpenai(req: NextRequest) {
 
   const fetchUrl = cloudflareAIGatewayUrl(`${baseUrl}/${path}`);
   console.log("fetchUrl", fetchUrl);
+
+  // For multipart requests (e.g. /v1/images/edits with image[] file uploads)
+  // we must preserve the original Content-Type so the boundary parameter is
+  // forwarded intact, and we must NOT consume the body via req.text() because
+  // that would UTF-8 decode binary image bytes and corrupt them.
+  const reqContentType = req.headers.get("Content-Type") || "";
+  const isMultipart = reqContentType.toLowerCase().startsWith("multipart/");
+
   const fetchOptions: RequestInit = {
     headers: {
-      "Content-Type": "application/json",
+      "Content-Type": isMultipart ? reqContentType : "application/json",
       "Cache-Control": "no-store",
       [authHeaderName]: authValue,
       ...(serverConfig.openaiOrgId && {
@@ -109,7 +117,9 @@ export async function requestOpenai(req: NextRequest) {
   };
 
   // #1815 try to refuse gpt4 request
-  if (serverConfig.customModels && req.body) {
+  // Skip JSON-based model filtering for multipart requests since their bodies
+  // are not JSON and reading them would corrupt the upload stream.
+  if (serverConfig.customModels && req.body && !isMultipart) {
     try {
       const clonedBody = await req.text();
       fetchOptions.body = clonedBody;
