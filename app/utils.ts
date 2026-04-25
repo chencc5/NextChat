@@ -296,15 +296,25 @@ export function isDalle3(model: string) {
   return "dall-e-3" === model;
 }
 
+const IMAGE_GENERATION_MODEL_REGEXES = [
+  /^dall-e/i,
+  /^gpt-image/i,
+  /imagine-image/i,
+];
+
+export function isImageGenerationModel(model: string) {
+  return IMAGE_GENERATION_MODEL_REGEXES.some((r) => r.test(model));
+}
+
 export function getTimeoutMSByModel(model: string) {
-  model = model.toLowerCase();
+  const lowered = model.toLowerCase();
   if (
-    model.startsWith("dall-e") ||
-    model.startsWith("dalle") ||
-    model.startsWith("o1") ||
-    model.startsWith("o3") ||
-    model.includes("deepseek-r") ||
-    model.includes("-thinking")
+    isImageGenerationModel(model) ||
+    lowered.startsWith("dalle") ||
+    lowered.startsWith("o1") ||
+    lowered.startsWith("o3") ||
+    lowered.includes("deepseek-r") ||
+    lowered.includes("-thinking")
   )
     return REQUEST_TIMEOUT_MS_FOR_THINKING;
   return REQUEST_TIMEOUT_MS;
@@ -313,6 +323,21 @@ export function getTimeoutMSByModel(model: string) {
 export function getModelSizes(model: string): ModelSize[] {
   if (isDalle3(model)) {
     return ["1024x1024", "1792x1024", "1024x1792"];
+  }
+  if (/^gpt-image/i.test(model)) {
+    // OpenAI gpt-image-1/2 only supports these three sizes (plus "auto").
+    return ["1024x1024", "1536x1024", "1024x1536"];
+  }
+  if (/imagine-image/i.test(model)) {
+    // xAI grok imagine image series; covers square + the two common
+    // landscape/portrait pixel pairs newapi/grok2api accepts.
+    return [
+      "1024x1024",
+      "1344x768",
+      "768x1344",
+      "1536x1024",
+      "1024x1536",
+    ];
   }
   if (model.toLowerCase().includes("cogview")) {
     return [

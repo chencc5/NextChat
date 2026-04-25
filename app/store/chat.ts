@@ -1,6 +1,6 @@
 import {
   getMessageTextContent,
-  isDalle3,
+  isImageGenerationModel,
   safeLocalStorage,
   trimTopic,
 } from "../utils";
@@ -665,8 +665,8 @@ export const useChatStore = createPersistStore(
         const config = useAppConfig.getState();
         const session = targetSession;
         const modelConfig = session.mask.modelConfig;
-        // skip summarize when using dalle3?
-        if (isDalle3(modelConfig.model)) {
+        // skip summarize when using image generation models
+        if (isImageGenerationModel(modelConfig.model)) {
           return;
         }
 

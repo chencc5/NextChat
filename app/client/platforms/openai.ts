@@ -41,6 +41,8 @@ import {
   getMessageTextContent,
   isVisionModel,
   isDalle3 as _isDalle3,
+  isImageGenerationModel as _isImageGenerationModel,
+  getModelSizes,
   getTimeoutMSByModel,
 } from "@/app/utils";
 import { fetch } from "@/app/utils/stream";
@@ -196,25 +198,46 @@ export class ChatGPTApi implements LLMApi {
     let requestPayload: RequestPayload | DalleRequestPayload;
 
     const isDalle3 = _isDalle3(options.config.model);
+    const isImageGen = _isImageGenerationModel(options.config.model);
     const isO1OrO3 =
       options.config.model.startsWith("o1") ||
       options.config.model.startsWith("o3") ||
       options.config.model.startsWith("o4-mini");
     const isGpt5 =  options.config.model.startsWith("gpt-5");
-    if (isDalle3) {
+    if (isImageGen) {
       const prompt = getMessageTextContent(
         options.messages.slice(-1)?.pop() as any,
       );
-      requestPayload = {
-        model: options.config.model,
-        prompt,
-        // URLs are only valid for 60 minutes after the image has been generated.
-        response_format: "b64_json", // using b64_json, and save image in CacheStorage
-        n: 1,
-        size: options.config?.size ?? "1024x1024",
-        quality: options.config?.quality ?? "standard",
-        style: options.config?.style ?? "vivid",
-      };
+      if (isDalle3) {
+        requestPayload = {
+          model: options.config.model,
+          prompt,
+          // URLs are only valid for 60 minutes after the image has been generated.
+          response_format: "b64_json", // using b64_json, and save image in CacheStorage
+          n: 1,
+          size: options.config?.size ?? "1024x1024",
+          quality: options.config?.quality ?? "standard",
+          style: options.config?.style ?? "vivid",
+        };
+      } else {
+        // Minimal OpenAI-compatible image generation payload for gpt-image-* /
+        // grok-imagine-image* via newapi. Avoid response_format/quality/style
+        // because some upstreams reject unknown fields. Only send `size` when
+        // the current value is actually supported by this model — otherwise
+        // let the upstream pick its own default (avoids "unsupported size"
+        // errors when switching models).
+        const allowedSizes = getModelSizes(options.config.model);
+        const chosenSize = options.config?.size;
+        const minimal: Record<string, any> = {
+          model: options.config.model,
+          prompt,
+          n: 1,
+        };
+        if (chosenSize && allowedSizes.includes(chosenSize)) {
+          minimal.size = chosenSize;
+        }
+        requestPayload = minimal as DalleRequestPayload;
+      }
     } else {
       const visionModel = isVisionModel(options.config.model);
       const messages: ChatOptions["messages"] = [];
@@ -267,7 +290,7 @@ export class ChatGPTApi implements LLMApi {
 
     console.log("[Request] openai payload: ", requestPayload);
 
-    const shouldStream = !isDalle3 && !!options.config.stream;
+    const shouldStream = !isImageGen && !!options.config.stream;
     const controller = new AbortController();
     options.onController?.(controller);
 
@@ -293,14 +316,14 @@ export class ChatGPTApi implements LLMApi {
             model?.provider?.providerName === ServiceProvider.Azure,
         );
         chatPath = this.path(
-          (isDalle3 ? Azure.ImagePath : Azure.ChatPath)(
+          (isImageGen ? Azure.ImagePath : Azure.ChatPath)(
             (model?.displayName ?? model?.name) as string,
             useCustomConfig ? useAccessStore.getState().azureApiVersion : "",
           ),
         );
       } else {
         chatPath = this.path(
-          isDalle3 ? OpenaiPath.ImagePath : OpenaiPath.ChatPath,
+          isImageGen ? OpenaiPath.ImagePath : OpenaiPath.ChatPath,
         );
       }
       if (shouldStream) {
