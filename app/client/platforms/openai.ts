@@ -245,13 +245,6 @@ export class ChatGPTApi implements LLMApi {
           formData.append("size", chosenSize);
         }
         formData.append("response_format", "b64_json");
-        console.log(
-          "[ImageEdit] attaching",
-          attachedImageUrls.length,
-          "image(s):",
-          attachedImageUrls,
-        );
-        let attachedCount = 0;
         for (let i = 0; i < attachedImageUrls.length; i++) {
           const url = attachedImageUrls[i];
           try {
@@ -260,25 +253,14 @@ export class ChatGPTApi implements LLMApi {
             const blob = await (await window.fetch(url)).blob();
             const type = blob.type || "image/png";
             const ext = (type.split("/")[1] || "png").split(";")[0];
-            const filename = `image_${i}.${ext}`;
-            formData.append("image[]", blob, filename);
-            console.log(
-              `[ImageEdit] appended image[${i}] ${filename} (${type}, ${blob.size} bytes)`,
-            );
-            attachedCount += 1;
+            formData.append("image[]", blob, `image_${i}.${ext}`);
           } catch (err) {
-            console.error(
-              "[ImageEdit] failed to read attached image:",
+            console.warn(
+              "[OpenAI] failed to read attached image, skipping:",
               url,
               err,
             );
           }
-        }
-        if (attachedCount === 0) {
-          throw new Error(
-            "Image edit request was made but no attached images could be read. " +
-              "Check the console above for fetch errors.",
-          );
         }
         imageEditFormData = formData;
         // Placeholder requestPayload to satisfy types; not actually sent.
